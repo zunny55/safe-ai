@@ -98,3 +98,27 @@ while True:
 
 cap.release()
 cv2.destroyAllWindows()
+import streamlit as st
+import cv2
+from ultralytics import YOLO
+
+st.title("SafeVision AI - Industrial Safety Monitoring")
+
+model = YOLO("yolov8n.pt")
+
+run = st.checkbox("Start Camera")
+
+camera = cv2.VideoCapture(0)
+
+frame_window = st.image([])
+
+while run:
+    ret, frame = camera.read()
+
+    results = model(frame)
+
+    annotated_frame = results[0].plot()
+
+    frame_window.image(annotated_frame)
+
+camera.release()
