@@ -4,23 +4,13 @@ import numpy as np
 from PIL import Image
 from ultralytics import YOLO
 
-# -----------------------
-# Title
-# -----------------------
 st.title("SafeVision AI - PPE Detection")
-st.write("Detect Helmet and Safety Vest")
 
-# -----------------------
-# Load model
-# -----------------------
 model = YOLO("best.pt")
 
-# -----------------------
-# Upload Image
-# -----------------------
 uploaded_file = st.file_uploader(
     "Upload Image",
-    type=["jpg", "jpeg", "png"]
+    type=["jpg","jpeg","png"]
 )
 
 if uploaded_file is not None:
@@ -28,18 +18,15 @@ if uploaded_file is not None:
     image = Image.open(uploaded_file).convert("RGB")
     frame = np.array(image)
 
-    results = model(frame)
+    results = model(frame, conf=0.4)
 
     helmet_missing = False
     vest_missing = False
 
     for r in results:
+        for box in r.boxes:
 
-        boxes = r.boxes
-
-        for box in boxes:
-
-            x1, y1, x2, y2 = map(int, box.xyxy[0])
+            x1,y1,x2,y2 = map(int, box.xyxy[0])
             cls = int(box.cls[0])
             conf = float(box.conf[0])
 
@@ -53,9 +40,6 @@ if uploaded_file is not None:
             elif label == "vest":
                 color = (255,200,0)
 
-            elif label == "person":
-                color = (0,200,255)
-
             elif label == "no_helmet":
                 color = (0,0,255)
                 helmet_missing = True
@@ -64,16 +48,11 @@ if uploaded_file is not None:
                 color = (0,0,255)
                 vest_missing = True
 
-            else:
-                color = (200,200,200)
-
             cv2.rectangle(frame,(x1,y1),(x2,y2),color,2)
-
-            text = f"{label} {conf:.2f}"
 
             cv2.putText(
                 frame,
-                text,
+                f"{label} {conf:.2f}",
                 (x1,y1-10),
                 cv2.FONT_HERSHEY_SIMPLEX,
                 0.7,
@@ -81,15 +60,11 @@ if uploaded_file is not None:
                 2
             )
 
-    # -----------------------
-    # Alerts
-    # -----------------------
-
     if helmet_missing:
         st.error("⚠ Worker without helmet detected")
 
     if vest_missing:
-        st.error("⚠ Worker without safety vest detected")
+        st.error("⚠ Worker without vest detected")
 
     if not helmet_missing and not vest_missing:
         st.success("✅ All workers wearing PPE")
