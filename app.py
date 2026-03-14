@@ -108,4 +108,4 @@ if uploaded_file is not None:
         if alert:
             st.error("Safety Alert: Worker detected inside danger zone")
         else:
-            st.success("No worker in danger zone", use_column_width=True)
+            st.success("No worker in danger zone")
