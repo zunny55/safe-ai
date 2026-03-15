@@ -16,15 +16,16 @@ if file:
 
     h, w, _ = img.shape
 
-    # ===== ใช้แค่ครึ่งบนของภาพ =====
-    upper_half = img[0:int(h*0.5), :]
+    helmet_area = img[0:int(h*0.3), :]
 
-    hsv = cv2.cvtColor(upper_half, cv2.COLOR_RGB2HSV)
+    vest_area = img[int(h*0.3):int(h*0.7), :]
 
-    # ===== สีหมวก =====
-    helmet_yellow = cv2.inRange(hsv, (20,120,120), (35,255,255))
-    helmet_orange = cv2.inRange(hsv, (5,120,120), (15,255,255))
-    helmet_white = cv2.inRange(hsv, (0,0,220), (180,40,255))
+    hsv_helmet = cv2.cvtColor(helmet_area, cv2.COLOR_RGB2HSV)
+    hsv_vest = cv2.cvtColor(vest_area, cv2.COLOR_RGB2HSV)
+
+    helmet_yellow = cv2.inRange(hsv_helmet, (20,120,120), (35,255,255))
+    helmet_orange = cv2.inRange(hsv_helmet, (5,120,120), (15,255,255))
+    helmet_white = cv2.inRange(hsv_helmet, (0,0,220), (180,40,255))
 
     helmet_pixels = (
         np.sum(helmet_yellow > 0) +
@@ -32,9 +33,8 @@ if file:
         np.sum(helmet_white > 0)
     )
 
-    # ===== สีเสื้อกั๊ก =====
-    vest_yellow = cv2.inRange(hsv, (20,120,120), (35,255,255))
-    vest_orange = cv2.inRange(hsv, (5,120,120), (15,255,255))
+    vest_yellow = cv2.inRange(hsv_vest, (20,120,120), (35,255,255))
+    vest_orange = cv2.inRange(hsv_vest, (5,120,120), (15,255,255))
 
     vest_pixels = (
         np.sum(vest_yellow > 0) +
@@ -43,12 +43,12 @@ if file:
 
     st.subheader("Result")
 
-    if helmet_pixels > 6000:
+    if helmet_pixels > 7000:
         st.success("🪖 Helmet detected")
     else:
         st.error("❌ No helmet")
 
-    if vest_pixels > 6000:
+    if vest_pixels > 7000:
         st.success("🦺 Safety vest detected")
     else:
         st.error("❌ No safety vest")
