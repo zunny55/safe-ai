@@ -1,6 +1,7 @@
-ultralytics
-torch
-opencv-python-headless
-pillow
-streamlit
-numpy
+app.py
+best.pt
+requirements.txt
+packages.txt
+runtime.txt
+data.yaml
+README.md
