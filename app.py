@@ -1,72 +1,48 @@
 import streamlit as st
-import numpy as np
-import cv2
 from ultralytics import YOLO
+import numpy as np
 from PIL import Image
 
-st.title("🦺 PPE Detection System")
+st.set_page_config(page_title="AI Safety PPE Detector", layout="centered")
 
-# โหลดโมเดล
+st.title("🦺 AI PPE Safety Detector")
+
 @st.cache_resource
 def load_model():
-    model = YOLO("best.pt")
+    model = YOLO("yolov8n.pt")   # โมเดลมาตรฐาน
     return model
 
 model = load_model()
 
-uploaded_file = st.file_uploader("Upload Image", type=["jpg","jpeg","png"])
+uploaded_file = st.file_uploader("Upload Image", type=["jpg","png","jpeg"])
 
 if uploaded_file is not None:
 
-    image = Image.open(uploaded_file).convert("RGB")
-    frame = np.array(image)
+    image = Image.open(uploaded_file)
+    img_array = np.array(image)
 
-    if frame.shape[2] == 4:
-        frame = frame[:, :, :3]
+    results = model(img_array)
 
-    results = model(frame, conf=0.25)
+    annotated = results[0].plot()
 
-    helmet = False
-    vest = False
+    st.image(annotated, caption="Detection Result", use_container_width=True)
 
-    for r in results:
-        for box in r.boxes:
+    classes = results[0].boxes.cls.tolist()
 
-            cls = int(box.cls)
-            label = model.names[cls]
+    names = model.names
 
-            x1,y1,x2,y2 = map(int,box.xyxy[0])
+    detected = [names[int(c)] for c in classes]
 
-            if label.lower() == "helmet":
-                helmet = True
-                color = (0,255,0)
+    if "person" in detected:
+        st.success("Person detected")
 
-            elif label.lower() == "vest":
-                vest = True
-                color = (255,255,0)
+        # ตรวจสีหมวกคร่าวๆ
+        avg_color = img_array.mean(axis=(0,1))
 
-            elif label.lower() == "person":
-                color = (255,0,0)
-
-            else:
-                color = (0,0,255)
-
-            cv2.rectangle(frame,(x1,y1),(x2,y2),color,3)
-
-            cv2.putText(
-                frame,
-                label,
-                (x1,y1-10),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.8,
-                color,
-                2
-            )
-
-    st.image(frame)
-
-    if helmet and vest:
-        st.success("SAFE")
+        if avg_color[0] > 150 or avg_color[1] > 150:
+            st.success("Possible PPE detected")
+        else:
+            st.error("NO PPE DETECTED")
 
     else:
-        st.error("NO PPE")
+        st.warning("No person detected")
