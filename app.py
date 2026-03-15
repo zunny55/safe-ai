@@ -3,39 +3,54 @@ import cv2
 import numpy as np
 from PIL import Image
 
-st.title("🦺 PPE Detector")
+st.title("🦺 PPE Color Detector")
 
-uploaded_file = st.file_uploader("Upload image", type=["jpg","png","jpeg"])
+file = st.file_uploader("Upload image", type=["jpg","png","jpeg"])
 
-if uploaded_file:
+if file:
 
-    image = Image.open(uploaded_file)
+    image = Image.open(file)
     img = np.array(image)
 
     st.image(img, caption="Uploaded Image", use_container_width=True)
 
     h, w, _ = img.shape
 
-    # ตัดเฉพาะช่วงลำตัว (ประมาณ 30% ถึง 70% ของภาพ)
-    torso = img[int(h*0.3):int(h*0.7), int(w*0.25):int(w*0.75)]
+    # แบ่งพื้นที่ตรวจ
+    helmet_area = img[0:int(h*0.3), :]        # ส่วนหัว
+    vest_area = img[int(h*0.3):int(h*0.7), :] # ส่วนลำตัว
 
-    hsv = cv2.cvtColor(torso, cv2.COLOR_RGB2HSV)
+    hsv_helmet = cv2.cvtColor(helmet_area, cv2.COLOR_RGB2HSV)
+    hsv_vest = cv2.cvtColor(vest_area, cv2.COLOR_RGB2HSV)
 
-    # สีเหลือง
-    lower_yellow = np.array([20,100,100])
-    upper_yellow = np.array([35,255,255])
+    # สีหมวก
+    helmet_yellow = cv2.inRange(hsv_helmet, (20,100,100), (35,255,255))
+    helmet_orange = cv2.inRange(hsv_helmet, (5,100,100), (15,255,255))
+    helmet_white = cv2.inRange(hsv_helmet, (0,0,200), (180,40,255))
 
-    # สีส้ม
-    lower_orange = np.array([5,100,100])
-    upper_orange = np.array([15,255,255])
+    helmet_pixels = (
+        np.sum(helmet_yellow > 0) +
+        np.sum(helmet_orange > 0) +
+        np.sum(helmet_white > 0)
+    )
 
-    mask_yellow = cv2.inRange(hsv, lower_yellow, upper_yellow)
-    mask_orange = cv2.inRange(hsv, lower_orange, upper_orange)
+    # สีเสื้อกั๊ก
+    vest_yellow = cv2.inRange(hsv_vest, (20,100,100), (35,255,255))
+    vest_orange = cv2.inRange(hsv_vest, (5,100,100), (15,255,255))
 
-    yellow_pixels = np.sum(mask_yellow > 0)
-    orange_pixels = np.sum(mask_orange > 0)
+    vest_pixels = (
+        np.sum(vest_yellow > 0) +
+        np.sum(vest_orange > 0)
+    )
 
-    if yellow_pixels > 2000 or orange_pixels > 2000:
+    st.subheader("Result")
+
+    if helmet_pixels > 2000:
+        st.success("🪖 Helmet detected")
+    else:
+        st.error("❌ No helmet")
+
+    if vest_pixels > 2000:
         st.success("🦺 Safety vest detected")
     else:
-        st.error("⚠️ No safety vest detected")
+        st.error("❌ No safety vest")
