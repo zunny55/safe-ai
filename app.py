@@ -6,10 +6,9 @@ from ultralytics import YOLO
 
 st.title("🦺 SafeVision AI")
 
-# โมเดลตรวจคน
 person_model = YOLO("yolov8n.pt")
 
-# โมเดล PPE ที่คุณ train
+
 ppe_model = YOLO("best.pt")
 
 uploaded_file = st.file_uploader("Upload Image", type=["jpg","png","jpeg"])
