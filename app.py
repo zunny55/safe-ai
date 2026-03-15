@@ -45,4 +45,4 @@ if uploaded_file is not None:
             st.error("NO PPE DETECTED")
 
     else:
-        st.warning("No person detected")
+        st.warning("No person detected")warning("No person detected")
