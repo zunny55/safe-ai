@@ -4,70 +4,52 @@ import cv2
 from ultralytics import YOLO
 from PIL import Image
 
-st.set_page_config(page_title="AI PPE Detection", layout="centered")
+st.title("🦺 PPE Detection System")
 
-st.title("🦺 AI PPE Detection System")
-st.write("Upload an image to detect helmet and safety vest")
-
-# -----------------------
-# Load models
-# -----------------------
+# โหลดโมเดล
 @st.cache_resource
-def load_models():
-    person_model = YOLO("yolov8n.pt")
-    ppe_model = YOLO("best.pt")
-    return person_model, ppe_model
+def load_model():
+    model = YOLO("best.pt")
+    return model
 
-person_model, ppe_model = load_models()
+model = load_model()
 
-# -----------------------
-# Upload image
-# -----------------------
-uploaded_file = st.file_uploader(
-    "Upload Image",
-    type=["jpg", "jpeg", "png"]
-)
+uploaded_file = st.file_uploader("Upload Image", type=["jpg","jpeg","png"])
 
 if uploaded_file is not None:
 
-    image = Image.open(uploaded_file)
-
-    # Convert to RGB
-    image = image.convert("RGB")
-
-    # Convert to numpy
+    image = Image.open(uploaded_file).convert("RGB")
     frame = np.array(image)
 
-    # Safety fix (remove alpha channel if exists)
     if frame.shape[2] == 4:
         frame = frame[:, :, :3]
 
-    helmet_detected = False
-    vest_detected = False
+    results = model(frame, conf=0.25)
 
-    # -----------------------
-    # Detect PPE
-    # -----------------------
-    results = ppe_model(frame, conf=0.25)
+    helmet = False
+    vest = False
 
     for r in results:
         for box in r.boxes:
 
             cls = int(box.cls)
-            label = ppe_model.names[cls].lower()
+            label = model.names[cls]
 
-            x1, y1, x2, y2 = map(int, box.xyxy[0])
+            x1,y1,x2,y2 = map(int,box.xyxy[0])
 
-            if "helmet" in label:
-                helmet_detected = True
+            if label.lower() == "helmet":
+                helmet = True
                 color = (0,255,0)
 
-            elif "vest" in label or "jacket" in label:
-                vest_detected = True
+            elif label.lower() == "vest":
+                vest = True
                 color = (255,255,0)
 
-            else:
+            elif label.lower() == "person":
                 color = (255,0,0)
+
+            else:
+                color = (0,0,255)
 
             cv2.rectangle(frame,(x1,y1),(x2,y2),color,3)
 
@@ -81,21 +63,10 @@ if uploaded_file is not None:
                 2
             )
 
-    # -----------------------
-    # Show image
-    # -----------------------
-    st.image(frame, caption="Detection Result", use_column_width=True)
+    st.image(frame)
 
-    # -----------------------
-    # Safety Status
-    # -----------------------
-    if helmet_detected and vest_detected:
-        st.success("✅ Worker wearing helmet and vest")
+    if helmet and vest:
+        st.success("SAFE")
 
     else:
-
-        if not helmet_detected:
-            st.error("⚠ Helmet not detected")
-
-        if not vest_detected:
-            st.error("⚠ Safety vest not detected")
+        st.error("NO PPE")
