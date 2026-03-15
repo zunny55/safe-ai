@@ -4,7 +4,6 @@ from PIL import Image
 import cv2
 from ultralytics import YOLO
 
-# ตั้งค่าหน้าเว็บ
 st.set_page_config(page_title="SafeVision AI", layout="wide")
 
 st.title("🦺 SafeVision AI - PPE Detection")
@@ -17,17 +16,35 @@ uploaded_file = st.file_uploader("Upload Image", type=["jpg","jpeg","png"])
 
 if uploaded_file is not None:
 
-    # โหลดรูป
     image = Image.open(uploaded_file).convert("RGB")
     frame = np.array(image)
 
-    # ตรวจจับคน
-    results = person_model(frame)
+    # ตรวจคน
+    person_results = person_model(frame)
+
+    # ตรวจ PPE จากภาพเต็ม
+    ppe_results = ppe_model(frame)
+
+    helmet_boxes = []
+    vest_boxes = []
+
+    # เก็บตำแหน่ง PPE
+    for r in ppe_results:
+        for box in r.boxes:
+
+            label = ppe_model.names[int(box.cls[0])].lower()
+            x1,y1,x2,y2 = map(int,box.xyxy[0])
+
+            if label in ["helmet","hardhat","hat"]:
+                helmet_boxes.append((x1,y1,x2,y2))
+
+            if label in ["vest","safety vest","safety_vest","jacket"]:
+                vest_boxes.append((x1,y1,x2,y2))
 
     helmet_missing = False
     vest_missing = False
 
-    for r in results:
+    for r in person_results:
         for box in r.boxes:
 
             cls = int(box.cls[0])
@@ -35,33 +52,20 @@ if uploaded_file is not None:
             if person_model.names[cls] != "person":
                 continue
 
-            x1, y1, x2, y2 = map(int, box.xyxy[0])
-
-            # ขยายกรอบ
-            pad = 30
-            x1 = max(0, x1 - pad)
-            y1 = max(0, y1 - pad)
-            x2 = min(frame.shape[1], x2 + pad)
-            y2 = min(frame.shape[0], y2 + pad)
-
-            person_crop = frame[y1:y2, x1:x2]
-
-            # ตรวจ PPE
-            ppe_results = ppe_model(person_crop)
+            x1,y1,x2,y2 = map(int,box.xyxy[0])
 
             helmet = False
             vest = False
 
-            for pr in ppe_results:
-                for pbox in pr.boxes:
+            # เช็คว่าหมวกอยู่ในกรอบคนไหม
+            for hx1,hy1,hx2,hy2 in helmet_boxes:
+                if hx1 > x1 and hy1 > y1 and hx2 < x2 and hy2 < y2:
+                    helmet = True
 
-                    label = ppe_model.names[int(pbox.cls[0])].lower()
-
-                    if label in ["helmet","hardhat","hat"]:
-                        helmet = True
-
-                    if label in ["vest","safety vest","safety_vest","jacket"]:
-                        vest = True
+            # เช็คเสื้อ
+            for vx1,vy1,vx2,vy2 in vest_boxes:
+                if vx1 > x1 and vy1 > y1 and vx2 < x2 and vy2 < y2:
+                    vest = True
 
             color = (0,255,0)
             text = "SAFE"
@@ -79,23 +83,18 @@ if uploaded_file is not None:
             if not helmet and not vest:
                 text = "NO PPE"
 
-            # วาดกรอบ
             cv2.rectangle(frame,(x1,y1),(x2,y2),color,3)
 
-            # ใส่ข้อความ
-            cv2.putText(
-                frame,
-                text,
-                (x1,y1-10),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.9,
-                color,
-                2
-            )
+            cv2.putText(frame,
+                        text,
+                        (x1,y1-10),
+                        cv2.FONT_HERSHEY_SIMPLEX,
+                        0.9,
+                        color,
+                        2)
 
     st.image(frame)
 
-    # แสดงผลแจ้งเตือน
     if helmet_missing:
         st.error("⚠ Worker without helmet detected")
 
