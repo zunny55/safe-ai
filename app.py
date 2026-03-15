@@ -1,17 +1,12 @@
 import streamlit as st
 from ultralytics import YOLO
-import cv2
 import numpy as np
 from PIL import Image
-import os
 
 st.set_page_config(page_title="SafeVision AI", layout="centered")
 
 st.title("🦺 SafeVision AI")
-st.write("AI ตรวจสอบ PPE (Helmet / Safety Vest)")
-
-# แสดงไฟล์ในโฟลเดอร์เพื่อ debug
-st.write("Files in project:", os.listdir())
+st.write("AI System for Detecting PPE (Helmet & Safety Vest)")
 
 # โหลดโมเดล
 @st.cache_resource
@@ -21,21 +16,21 @@ def load_model():
 
 model = load_model()
 
-# แสดง class ของโมเดล
-st.write("Model classes:", model.names)
+uploaded_file = st.file_uploader(
+    "Upload an image to check worker safety",
+    type=["jpg", "jpeg", "png"]
+)
 
-uploaded_file = st.file_uploader("Upload Image", type=["jpg","png","jpeg"])
-
-if uploaded_file is not None:
+if uploaded_file:
 
     image = Image.open(uploaded_file)
     img = np.array(image)
 
     results = model(img)
 
-    annotated_frame = results[0].plot()
+    result_img = results[0].plot()
 
-    st.image(annotated_frame, caption="Detection Result", use_container_width=True)
+    st.image(result_img, caption="Detection Result", use_container_width=True)
 
     names = model.names
     boxes = results[0].boxes
@@ -58,8 +53,3 @@ if uploaded_file is not None:
         st.success("✅ All workers wearing PPE")
     else:
         st.error("⚠️ PPE violation detected")
-
-    if not helmet_missing and not vest_missing:
-        st.success("✅ All workers wearing PPE")
-
-    st.image(frame, channels="BGR")
