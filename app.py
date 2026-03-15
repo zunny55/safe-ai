@@ -7,6 +7,7 @@ from ultralytics import YOLO
 st.title("SafeVision AI - PPE Detection")
 
 model = YOLO("best.pt")
+st.write(model.names)
 
 uploaded_file = st.file_uploader(
     "Upload Image",
