@@ -1,7 +1,5 @@
-app.py
-best.pt
-requirements.txt
-packages.txt
-runtime.txt
-data.yaml
-README.md
+streamlit
+ultralytics
+opencv-python-headless
+pillow
+numpy
