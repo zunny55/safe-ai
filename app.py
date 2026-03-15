@@ -1,71 +1,63 @@
 import streamlit as st
+from ultralytics import YOLO
 import cv2
 import numpy as np
 from PIL import Image
-from ultralytics import YOLO
+import os
 
-st.title("SafeVision AI - PPE Detection")
+st.set_page_config(page_title="SafeVision AI", layout="centered")
 
-model = YOLO("best.pt")
-st.write(model.names)
+st.title("🦺 SafeVision AI")
+st.write("AI ตรวจสอบ PPE (Helmet / Safety Vest)")
 
-uploaded_file = st.file_uploader(
-    "Upload Image",
-    type=["jpg","jpeg","png"]
-)
+# แสดงไฟล์ในโฟลเดอร์เพื่อ debug
+st.write("Files in project:", os.listdir())
+
+# โหลดโมเดล
+@st.cache_resource
+def load_model():
+    model = YOLO("./best.pt")
+    return model
+
+model = load_model()
+
+# แสดง class ของโมเดล
+st.write("Model classes:", model.names)
+
+uploaded_file = st.file_uploader("Upload Image", type=["jpg","png","jpeg"])
 
 if uploaded_file is not None:
 
-    image = Image.open(uploaded_file).convert("RGB")
-    frame = np.array(image)
+    image = Image.open(uploaded_file)
+    img = np.array(image)
 
-    results = model(frame, conf=0.4)
+    results = model(img)
 
-    helmet_missing = False
-    vest_missing = False
+    annotated_frame = results[0].plot()
 
-    for r in results:
-        for box in r.boxes:
+    st.image(annotated_frame, caption="Detection Result", use_container_width=True)
 
-            x1,y1,x2,y2 = map(int, box.xyxy[0])
-            cls = int(box.cls[0])
-            conf = float(box.conf[0])
+    names = model.names
+    boxes = results[0].boxes
 
-            label = model.names[cls]
+    helmet_ok = True
+    vest_ok = True
 
-            color = (0,255,0)
+    if boxes is not None:
+        for box in boxes:
+            cls_id = int(box.cls[0])
+            label = names[cls_id]
 
-            if label == "helmet":
-                color = (0,255,0)
+            if label == "no_helmet":
+                helmet_ok = False
 
-            elif label == "vest":
-                color = (255,200,0)
+            if label == "no_vest":
+                vest_ok = False
 
-            elif label == "no_helmet":
-                color = (0,0,255)
-                helmet_missing = True
-
-            elif label == "no_vest":
-                color = (0,0,255)
-                vest_missing = True
-
-            cv2.rectangle(frame,(x1,y1),(x2,y2),color,2)
-
-            cv2.putText(
-                frame,
-                f"{label} {conf:.2f}",
-                (x1,y1-10),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.7,
-                color,
-                2
-            )
-
-    if helmet_missing:
-        st.error("⚠ Worker without helmet detected")
-
-    if vest_missing:
-        st.error("⚠ Worker without vest detected")
+    if helmet_ok and vest_ok:
+        st.success("✅ All workers wearing PPE")
+    else:
+        st.error("⚠️ PPE violation detected")
 
     if not helmet_missing and not vest_missing:
         st.success("✅ All workers wearing PPE")
